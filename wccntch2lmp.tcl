@@ -111,6 +111,37 @@ namespace eval ::wccnt:: {
 	file delete -force $outName.PDBPSF_ctrl.psf;
 	file delete -force $outName.PDBPSF_ctrl.pdb;
 
+	
+	# clean IN file pf PDBPSF line
+	proc changeIN { lmpName } {
+	    # files to open/write
+	    set inLMP  [ open $lmpName.in r ];    
+	    set outLMP [ open $lmpName.TMP.in w ];
+	    
+	    # go over each line
+	    foreach line [ split [ read $inLMP ] \n ] {		
+		set paramVal [ lindex $line 0 ];		
+		if { $paramVal == "read_data"   } {
+		    puts $outLMP "read_data       $lmpName.data";
+		} elseif  { $paramVal == "restart" } {
+		    puts $outLMP "restart         10 $lmpName.restart1 $lmpName.restart2";
+		} elseif  { $paramVal == "dump" } {
+		    puts $outLMP "dump            1 all atom 10 $lmpName.dump";
+		} else {
+		    puts $outLMP $line
+		}		
+	    }
+	    
+	    # close files
+	    close $inLMP;
+	    close $outLMP;
+	    
+	    # overwrite clean file
+	    file rename -force $lmpName.TMP.in $lmpName.in;	    
+	}
+	
+	changeIN $outName;
+	
     }
 }
 
