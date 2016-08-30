@@ -124,7 +124,7 @@ namespace eval ::wccnt:: {
 		if { $paramVal == "read_data"   } {
 		    puts $outLMP "read_data       $lmpName.data";
 		} elseif  { $paramVal == "restart" } {
-		    puts $outLMP "restart         1 $lmpName.restart1 $lmpName.restart2";
+		    puts $outLMP "restart         10 $lmpName.restart1 $lmpName.restart2";
 		} elseif  { $paramVal == "dump" } {
 		    puts $outLMP "dump            1 all atom 10 $lmpName.dump";
 		} else {
