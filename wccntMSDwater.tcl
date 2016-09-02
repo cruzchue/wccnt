@@ -22,7 +22,7 @@ namespace eval ::wccnt:: {
 		-psf     : structure file
 		-dcd     : trajectory file
 		-freqDCD : frame frequency (in ns)
-		-outName : output name		
+		-outName : output name (ns : 1st column; nm^2 : 2nd column)
 	    }
 	    return
 	}
