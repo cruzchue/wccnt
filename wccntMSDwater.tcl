@@ -19,8 +19,8 @@ namespace eval ::wccnt:: {
 	# Info
 	proc usage {} {
 	    vmdcon -info {usage: wccnt MSDwater [args...]
-		-psfFile : structure file
-		-dcdFile : trajectory file
+		-psf     : structure file
+		-dcd     : trajectory file
 		-freqDCD : frame frequency (in ns)
 		-outName : output name		
 	    }
@@ -35,8 +35,8 @@ namespace eval ::wccnt:: {
 	    set arg [ lindex $args $argnum ]
 	    set val [ lindex $args [expr $argnum + 1]]
 	    switch -- $arg {
-		"-psfFile"  { set psfFile $val; incr argnum; }
-		"-dcdFile"  { set dcdFile $val; incr argnum; }
+		"-psf"      { set psfFile $val; incr argnum; }
+		"-dcd"      { set dcdFile $val; incr argnum; }
 		"-freqDCD"  { set freqDCD $val; incr argnum; }
 		"-outName"  { set outName $val; incr argnum; }
 		default { error "error: MSDwater: unknown option: $arg" }
