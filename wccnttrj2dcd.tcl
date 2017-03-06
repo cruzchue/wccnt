@@ -3,8 +3,8 @@
 # This script converts LAMMPS trj into DCD
 #
 # usage:
-# set trjFile [path_to_file]/[name_of_file].lammpstrj;
-# set outName [name]
+# set trjFile SMTH.lammpstrj;
+# set outName SMTH;
 # trj2dcd $trjFile $outName
 #
 
