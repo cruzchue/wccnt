@@ -55,7 +55,7 @@ namespace eval ::wccnt:: {
 
 	# load molecule
 	mol new $trjFile type lammpstrj first 0 last -1 step 1 waitfor all;
-	set molID1   [ molinfo top ];
+	set molID  [ molinfo top ];
 	
 	# export dcd file
 	set selAll [ atomselect $molID all ];
