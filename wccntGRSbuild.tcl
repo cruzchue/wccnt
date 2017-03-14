@@ -1,28 +1,31 @@
-############################################################
+####################################################################
 #
-# This script creates a CNT : PSF, PDB, TOP and PAR files
+# This script creates a graphene sheet : PSF, PDB, TOP and PAR files
 #
 #
-
 
 package provide wccnt 0.1
 
 namespace eval ::wccnt:: {
     namespace export wccnt*
-    proc wccntCNTbuild { args } {
+
+    proc wccntGRSbuild { args } {
 
 	# Info
 	proc usage {} {
-	    vmdcon -info {usage: wccnt CNTbuild [args...]
-		-nIndex    : n chiral index
-		-mIndex    : m chiral index
-		-lengthNM  : CNT length (in nm)
-		-perZ      : periodic bonds along Z-axis. 0=no, 1=yes [ default : 0 ]
-		-segName   : segname   [ default : CNT ]
-		-resName   : resname   [ default : CNT ]
+	    vmdcon -info {usage: wccnt GRSbuild [args...]
+		-lx        : length in x direction (nm)
+		-ly        : length in y direction (nm)
+		-type      : <armchair|zigzag> [ default : "armchair" ]
+		-cc 	   : bond length (nm) [ default : "0.1418" ]
+		-ma	   : <C-C|B-N> carbon/ boron-nitride pairs [ default: C-C ]
+		-nlayers   : stacking layers of graphene [ default : 1 ]
+		-perXY      : periodic bonds along x-y-axis. 0=no, 1=yes [ default : 0 ]
+		-segName   : segname   [ default : GRS ]
+		-resName   : resname   [ default : GRS ]
 		-atomType  : atom type [ default : CA ]
-		-shiftXYZ  : move CNT by a 3D vector  (in nm) [ default : "0 0 0" ]
-		-unitCNTnm : length of CNT resid unit (in nm) [ default : 1 ]
+		-shiftXYZ  : move graphene sheet by a 3D vector  (in nm) [ default : "0 0 0" ]
+		-unitGRSnm : length of GRS resid unit (in nm) [ default : 1 ]
 		-outName   : output name		
 	    }
 	    return
@@ -31,12 +34,16 @@ namespace eval ::wccnt:: {
 
 
 	# Set the defaults
-	set perZ      0;
-	set segName   CNT;
-	set resName   CNT;
+	set perXY      0;
+	set type      "armchair";
+	set ma        "C-C";
+	set cc	      0.1418;
+	set nlayers   1;
+	set segName   GRS;
+	set resName   GRS;
 	set atomType  CA;
 	set shiftXYZ  "0 0 0";
-	set unitCNTnm 1;
+	set unitGRSnm 1;
 
 	
 	# Parse options
@@ -44,69 +51,63 @@ namespace eval ::wccnt:: {
 	    set arg [ lindex $args $argnum ]
 	    set val [ lindex $args [expr $argnum + 1]]
 	    switch -- $arg {
-		"-nIndex"   { set nIndex   $val; incr argnum; }
-		"-mIndex"   { set mIndex   $val; incr argnum; }
-		"-lengthNM" { set lengthNM $val; incr argnum; }
-		"-perZ"     { set perZ     $val; incr argnum; }
+		"-lx"   { set lx   $val; incr argnum; }
+		"-ly"   { set ly   $val; incr argnum; }
+		"-type" { set type $val; incr argnum; }
+		"-cc"     { set cc   $val; incr argnum; }
+		"-ma"     { set ma   $val; incr argnum; }
+		"-nlayers"     { set nlayers   $val; incr argnum; }
+		"-perXY"     { set perXY   $val; incr argnum; }
 		"-segName"  { set segName  $val; incr argnum; }
 		"-resName"  { set resName  $val; incr argnum; }
 		"-atomType" { set atomType $val; incr argnum; }
 		"-shiftXYZ" { set shiftXYZ $val; incr argnum; }
-		"-unitCNTnm"    { set unitCNTnm    $val; incr argnum; }
+		"-unitGRSnm"    { set unitGRSnm    $val; incr argnum; }
 		"-outName"  { set outName  $val; incr argnum; }
-		default { error "error: CNTbuild: unknown option: $arg" }
+		default { error "error: GrapheneBuild: unknown option: $arg" }
 	    }
 	}
-	
-	
 	# check non-default variables    
-	set checkNINDEX    [ info exists nIndex ];
-	set checkMINDEX    [ info exists mIndex ];
-	set checkLENGTHNM  [ info exists lengthNM ];
+	set checkLX    [ info exists lx ];
+	set checkLY    [ info exists ly ];
 	set checkOUTNAME   [ info exists outName ];
 	
-	if { $checkNINDEX < 1 } {
-	    error "error: CNTbuild: need to define variable -nIndex"
+	if { $checkLX < 1 } {
+	    error "error: GRSbuild: need to define variable -lx"
 	}    
-	if { $checkMINDEX < 1 } {
-	    error "error: CNTbuild: need to define variable -mIndex"
+	if { $checkLY < 1 } {
+	    error "error: GRSbuild: need to define variable -ly"
 	}
-	if { $checkLENGTHNM < 1 } {
-	    error "error: CNTbuild: need to define variable -lengthNM"
-	}    
 	if { $checkOUTNAME < 1 } {
-	    error "error: CNTbuild: need to define variable -outName"
+	    error "error: GRSbuild: need to define variable -outName"
 	}
 
-	
-	# -----------------
-	# start procedures
-	# -----------------		
-
-	proc CNTper { nIndex mIndex lengthNM perZ shiftXYZ unitCNTnm segName resName atomType outName } {
+	proc GRSper { lx ly type nlayers perXY shiftXYZ unitGRSnm segName resName atomType outName } {
 	    
 	    #
-	    # This script creates a periodic CNT
-	    # the periodicity is along the Z-direction
+	    # This script creates a periodic graphene sheet
+	    # the periodicity is in the x- and y-direction
 	    #
-	    # nIndex   : n index for CNT - integer
-	    # mIndex   : m index for CNT - integer
-	    # lengthNM : length in nm - real
-	    # perZ     :  0 for non periodic system; 1 for periodic system - integer
-	    # shiftXYZ :  move CNT by a 3D vector 
-	    # unitCNTnm    :  resid unit, lenght in NM - integer
+	    # lx   : length - x for GRS - real
+	    # ly   : length - y for GRS - real
+	    # type : armchair or zigzag
+	    # nlayers  :  number of stacked GRS layers
+	    # perXY     :  0 for non periodic system; 1 for periodic system - integer
+	    # shiftXYZ :  move GRS by a 3D vector 
+	    # unitGRSnm    :  resid unit, lenght in NM - integer
 	    # outName  : output name
 	    #
 	    # test:
 	    # -----
-	    # set nIndex 24;
-	    # set mIndex 24;
-	    # set lengthNM 20;
-	    # set perZ 1; 
-	    # set shiftXYZ "-10 -20 -30";
-	    # set unitCNTnm 2;
-	    # set outName test04per
-	    # CNTper  $nIndex $mIndex $lengthNM $perZ $shiftXYZ $unitCNTnm $outName
+	    # set lx 20.;
+	    # set ly 20;
+	    # set type "armchair";
+	    # set nlayers 2;
+	    # set perXY 1; 
+	    # set shiftXYZ "0 0 0";
+	    # set unitGRSnm 0.5;
+	    # set outName testper
+	    # GRSper  $lx $ly $type $perXY $shiftXYZ $unitGRSnm $outName
 	    #
 	    
 	    
@@ -162,18 +163,17 @@ namespace eval ::wccnt:: {
 
 	    # small nanotube for resid counting
 	    package require nanotube
-	    nanotube -l $unitCNTnm -n $nIndex -m $mIndex;
+	    graphene -lx $unitGRSnm -ly $unitGRSnm -type $type -nlayers $nlayers ;
 	    set molID0 [ molinfo top ];
 	    set selAll [ atomselect $molID0 all ]
 	    set atomsInRes [ $selAll num ];
 	    $selAll delete;
 	    mol delete $molID0;
 	    
-	    # create CNT
+	    # create GRS
 	    package require nanotube
-	    nanotube -l $lengthNM -n $nIndex -m $mIndex; # generate improper infomation
-	    
-	    # move CNT
+	    graphene -lx $lx -ly $ly -type $type -nlayers $nlayers ;  
+	    # move GRS
 	    set molID1   [ molinfo top ];
 	    set selAll   [ atomselect $molID1 all ]
 	    set shiftXYZ [ vecscale 10 $shiftXYZ ]
@@ -194,8 +194,6 @@ namespace eval ::wccnt:: {
 	    # clean
 	    $selAll delete;
 	    mol delete $molID1;
-
-	    
 	    
 	    # 2.- renaming	    
 	    # -------------------
@@ -204,7 +202,7 @@ namespace eval ::wccnt:: {
 	    mol new  $outName.NonPer.psf type psf waitfor all;
 	    set molID2  [ molinfo top ];
 	    mol addfile $outName.NonPer.pdb type pdb molid $molID2 waitfor all;	    
-
+	    
 	    # common features
 	    set selAll [ atomselect $molID2 all ];
 	    $selAll set segname $segName;
@@ -306,7 +304,7 @@ namespace eval ::wccnt:: {
 	    # 4.- periodic bonds
 	    # -------------------
 	    
-	    if { $perZ > 0 } {
+	    if { $perXY > 0 } {
 		
 		# load molecule
 		mol new $outName.NonImpr.psf type psf waitfor all;
@@ -317,42 +315,71 @@ namespace eval ::wccnt:: {
 		set selAll [ atomselect $molID4 all ];
 		foreach { cenX cenY cenZ } [ measure center $selAll ] { break };
 		$selAll delete;		
-		set selRingUp   [ atomselect $molID4 "(numbonds == 2) and (z > $cenZ)" ];
-		set selRingDown [ atomselect $molID4 "(numbonds == 2) and (z < $cenZ)" ];
+		set selRingY   [ atomselect $molID4 "(numbonds == 2) and (y < $cenY)" ];
+		set selRingYUp   [ atomselect $molID4 "(numbonds == 2) and (y > $cenY)" ];
+		set selRingX [ atomselect $molID4 "(numbonds == 2) and (x < $cenX)" ];
+		set selRingXUp [ atomselect $molID4 "(numbonds == 2) and (x > $cenX)" ];
 
 		# move down ring close to up ring
-		set zPer     [ molinfo $molID4 get c ];
-		set moveUp   "0 0 $zPer";
-		set moveDown [ vecscale -1 $moveUp ];
-		$selRingDown moveby $moveUp;
+		set xPer     [ molinfo $molID4 get a ];
+		set yPer     [ molinfo $molID4 get b ];
+		set moveX   "$xPer 0 0";
+		set moveXmin [ vecscale -1 $moveX ];
+		$selRingX moveby $moveX;
 		
 		# list of bonds between up and down rings
-		set indexRingUp   [ $selRingUp get index ];
-		set indexRingDown [ $selRingDown get index ];
+		set indexRingX [ $selRingX get index ];
+		set indexRingXUp [ $selRingXUp get index ];
 		
-		set cutoffCNT 1.43;
-		set perBonds "";
+		set cutoffC 1.418;
+		set perBondsX "";
 		
-		foreach index $indexRingDown {
-		    set nearSel [ atomselect $molID4 "(all within $cutoffCNT of index $index ) and (index $indexRingUp)" ];
+		foreach index $indexRingX {
+		    set nearSel [ atomselect $molID4 "(all within $cutoffC of index $index ) and (index $indexRingXUp)" ];
 		    set nearIndex [ $nearSel get index ];
 		    
 		    foreach index2 $nearIndex {
-			lappend perBonds "$index $index2";
-		    }
-		    
+			lappend perBondsX "$index $index2";
+		    }		    
 		    $nearSel delete;
 		}
 		
 		# move down ring back
-		$selRingDown moveby $moveDown;
+		$selRingX moveby $moveXmin;
 		
 		# add bonds
-		foreach eachPair $perBonds {
+		foreach eachPair $perBondsX {
 		    foreach { indexLeft indexRight } $eachPair { break };
 		    topo -molid $molID4 addbond $indexLeft $indexRight
 		}
+
+		set moveY   "0 $yPer 0";
+		set moveYmin [ vecscale -1 $moveY ];
+		$selRingY moveby $moveY;
 		
+		set indexRingY [ $selRingY get index ];
+		set indexRingYUp [ $selRingYUp get index ];
+		set perBondsY "";
+
+		foreach index $indexRingY {
+		    set nearSel [ atomselect $molID4 "(all within $cutoffC of index $index ) and (index $indexRingYUp)" ];
+		    set nearIndex [ $nearSel get index ];
+		    
+		    foreach index2 $nearIndex {
+			lappend perBondsY "$index $index2";
+		    }		    
+		    $nearSel delete;
+		}
+
+		# move down ring back
+		$selRingY moveby $moveYmin;
+
+		# add bonds
+		foreach eachPair $perBondsY {
+		    foreach { indexLeft indexRight } $eachPair { break };
+		    topo -molid $molID4 addbond $indexLeft $indexRight
+		}		
+
 		# output PSF/PDB
 		set selAll [ atomselect $molID4 all ];
 		animate write psf $outName.Per.psf sel $selAll waitfor all $molID4;
@@ -360,9 +387,12 @@ namespace eval ::wccnt:: {
 		
 		# clean
 		$selAll delete;
-		$selRingUp delete;
-		$selRingDown delete;
-		unset perBonds;
+		$selRingX delete;
+		$selRingXUp delete;
+		$selRingY delete;
+		$selRingYUp delete;
+		unset perBondsX;
+		unset perBondsY;
 		mol delete $molID4;
 		file delete -force $outName.NonImpr.psf;
 		file delete -force $outName.NonImpr.pdb;
@@ -421,10 +451,10 @@ namespace eval ::wccnt:: {
 	
 	
 	
-	proc CNTtoppar { psfFile pdbFile outName } {
+	proc GRStoppar { psfFile pdbFile outName } {
 
 	    #
-	    # This script generates a CNT topology
+	    # This script generates a GRS topology
 	    # from a PSF/PDB structure to be used in CHARMM2LAMMPS
 	    #
 	    # psfFile : PSF file
@@ -436,7 +466,7 @@ namespace eval ::wccnt:: {
 	    # set psfFile test04per.psf
 	    # set pdbFile test04per.pdb
 	    # set outName test10;
-	    # CNTtop $psfFile $pdbFile $outName;
+	    # GRStop $psfFile $pdbFile $outName;
 	    #
 	    
 	    
@@ -470,7 +500,6 @@ namespace eval ::wccnt:: {
 	    $selAll delete;
 
 	    # >>>>>>>>>>>>>>>>
-	    # PENDING : this part is designed for a chain with two residues, as my CNT, make it generic for N residues later
 
 	    # resname/resid info	    
 	    set selAll       [ atomselect $molID1 all ];
@@ -642,7 +671,7 @@ namespace eval ::wccnt:: {
 
 	    set outPAR [ open $outName.par w ];
 	    	    
-	    puts $outPAR "* This is a reduced version of the CHARMM22 parameter file for CNT";
+	    puts $outPAR "* This is a reduced version of the CHARMM22 parameter file for GRS";
 	    puts $outPAR "*";
 	    puts $outPAR " ";
 	    puts $outPAR "BONDS";
@@ -688,11 +717,11 @@ namespace eval ::wccnt:: {
 	# run procedures
 	# ---------------
 	
-	# create CNT
-	CNTper $nIndex $mIndex $lengthNM $perZ $shiftXYZ $unitCNTnm $segName $resName $atomType $outName
+	# create GRS
+	GRSper $lx $ly $type $nlayers $perXY $shiftXYZ $unitGRSnm $segName $resName $atomType $outName
 
 	# create topology
-	CNTtoppar $outName.psf $outName.pdb $outName;
+	GRStoppar $outName.psf $outName.pdb $outName;
 
 	# clean
 	file delete -force $outName.TOP.psf;
@@ -700,4 +729,3 @@ namespace eval ::wccnt:: {
 		        
     }   
 }
-

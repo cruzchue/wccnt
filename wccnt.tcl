@@ -9,6 +9,9 @@ proc wccnt { args } {
 	    Build PSF/PDB/TOP files for CNT:
 	     CNTbuild [options...]
 	    
+	    Build PSF/PDB/TOP files for Graphene Sheet:
+	     GRSbuild [options...]
+
 	    Fake oscillations for CNT:
 	     CNToscillate [options...]
 
