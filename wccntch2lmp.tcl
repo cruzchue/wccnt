@@ -30,12 +30,15 @@ namespace eval ::wccnt:: {
 		-pdb     : coordinate file	
 		-par     : parameter file
 		-top     : topology file
+		-cmap    : cmap option
 		-outName : output name 
 	    }
 	    return
 	}
 	if { [llength $args] < 1 } then { usage; return }
 	
+	# Set the defaults
+	set cmap 0;
 	
 	# Parse options
 	for { set argnum 0 } { $argnum < [llength $args] } { incr argnum } {
@@ -46,6 +49,7 @@ namespace eval ::wccnt:: {
 		"-pdb"     { set pdbFile $val; incr argnum; }
 		"-par"     { set parFile $val; incr argnum; }
 		"-top"     { set topFile $val; incr argnum; }
+		"-cmap"    { set cmap    $val; incr argnum; }
 		"-outName" { set outName $val; incr argnum; }
 		default { error "error: ch2lmp: unknown option: $arg" }
 	    }
@@ -97,7 +101,11 @@ namespace eval ::wccnt:: {
 	
 	# charmm2lammps
 	set dirCH2LMP "$datadir/ch2lmp/"; # location of ch2lmp
-	exec perl $dirCH2LMP/charmm2lammps.pl $outName.TOPPAR $outName.PDBPSF -lx=$aPBC -ly=$bPBC -lz=$cPBC; # execute charmm2lammps
+	if { $cmap == 0 } {
+	    exec perl $dirCH2LMP/charmm2lammps.pl $outName.TOPPAR $outName.PDBPSF -lx=$aPBC -ly=$bPBC -lz=$cPBC; # execute charmm2lammps
+	} else {
+	    exec perl $dirCH2LMP/charmm2lammpsCMAP.pl $outName.TOPPAR $outName.PDBPSF -lx=$aPBC -ly=$bPBC -lz=$cPBC -cmap=36; # execute charmm2lammps
+	}
 
 
 	# clean 
